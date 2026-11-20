@@ -1,3 +1,4 @@
+using System;
 using System.Net.Mime;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -7,7 +8,8 @@ namespace Pong;
 
 public class Game1 : Microsoft.Xna.Framework.Game
 {
-    private const float movmentSpeed = 400f;// pixels per secound (so all computers move at the same speed) 
+    private const float MovmentSpeed = 400f;// pixels per secound (so all computers move at the same speed) 
+    private const float BallSpeed = 300f;
     
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
@@ -17,6 +19,10 @@ public class Game1 : Microsoft.Xna.Framework.Game
     // are the variables that will hold the bats. 
     private Vector2 _leftBat; 
     private Vector2 _rightBat;
+    
+    // for the ball
+    private Vector2 _ballPosition;
+    private Vector2 _ballVelocity;
     
     public Game1()
     {
@@ -46,6 +52,9 @@ public class Game1 : Microsoft.Xna.Framework.Game
 
         _leftBat = new Vector2(30, middleOfScreenHeight);
         _rightBat = new Vector2(endOfScreenWidth - 30 - _batTexture.Width,  middleOfScreenHeight);
+        
+        // server the ball 
+        ResetBall(new Random().Next(2) == 0 ? -1 : 1); // randomly choses which side to serve.
     }
     
     // core of game logic, gets called many tikmes
@@ -63,15 +72,44 @@ public class Game1 : Microsoft.Xna.Framework.Game
         float timePassed = (float)gameTime.ElapsedGameTime.TotalSeconds; // totoal time passed 
         Rectangle screen = GraphicsDevice.Viewport.Bounds; // the game window 
 
-        _leftBat.Y +=  VerticalGetDirection(key, Keys.W, Keys.S) * timePassed *  movmentSpeed; // so that we account for slow or fast machines 
-        _leftBat.X += HorrizontalGetDirection(key, Keys.A, Keys.D) * timePassed *  movmentSpeed;
-        _rightBat.Y +=  VerticalGetDirection(key, Keys.Up, Keys.Down) * timePassed *  movmentSpeed; // so that we account for slow or fast machines 
-        _rightBat.X += HorrizontalGetDirection(key, Keys.Left, Keys.Right) * timePassed *  movmentSpeed;
+        _leftBat.Y +=  VerticalGetDirection(key, Keys.W, Keys.S) * timePassed *  MovmentSpeed; // so that we account for slow or fast machines 
+        _leftBat.X += Colligion.HorrizontalGetDirection(key, Keys.A, Keys.D) * timePassed *  MovmentSpeed;
+        _rightBat.Y +=  VerticalGetDirection(key, Keys.Up, Keys.Down) * timePassed *  MovmentSpeed; // so that we account for slow or fast machines 
+        _rightBat.X += Colligion.HorrizontalGetDirection(key, Keys.Left, Keys.Right) * timePassed *  MovmentSpeed;
         // now to make sure we don't leave the screen!
         _leftBat.Y = MathHelper.Clamp(_leftBat.Y, 0, screen.Height - _batTexture.Height);
         _rightBat.Y = MathHelper.Clamp(_rightBat.Y, 0, screen.Height - _batTexture.Height);
         _leftBat.X = MathHelper.Clamp(_leftBat.X, 0, screen.Width/2f - _batTexture.Width);
         _rightBat.X = MathHelper.Clamp(_rightBat.X, screen.Width/2f, screen.Width - _batTexture.Width);
+
+        _ballPosition += timePassed * _ballVelocity; // adds the distance the ball moved 
+        
+        // Bounce the ball off the top and bottom edges.
+        if ((_ballPosition.Y < 0 && _ballVelocity.Y < 0) ||
+            (_ballPosition.Y > screen.Height - _ballTexture.Height && _ballVelocity.Y > 0))
+        {
+            _ballVelocity.Y = -_ballVelocity.Y;
+        }
+        
+        // Bounce the ball off a bat.
+        if (_ballVelocity.X < 0 && GetBounds(_ballPosition, _ballTexture).Intersects(GetBounds(_leftBat, _batTexture)))
+        {
+            HitBall(_leftBat);
+        }
+        else if (_ballVelocity.X > 0 && GetBounds(_ballPosition, _ballTexture).Intersects(GetBounds(_rightBat, _batTexture)))
+        {
+            HitBall(_rightBat);
+        }
+        
+        // Serve again when the ball goes off the left or right edge.
+        if (_ballPosition.X < 0)
+        {
+            ResetBall(1);
+        }
+        else if (_ballPosition.X > screen.Width)
+        {
+            ResetBall(-1);
+        }
         
         base.Update(gameTime);
     }
@@ -95,6 +133,7 @@ public class Game1 : Microsoft.Xna.Framework.Game
         // Drawing the bats
         _spriteBatch.Draw(_batTexture, _leftBat, Color.White);
         _spriteBatch.Draw(_batTexture, _rightBat, Color.White);
+        _spriteBatch.Draw(_ballTexture, _ballPosition, Color.White);
         _spriteBatch.End(); // ends the set of draw calls
         base.Draw(gameTime);
     }
@@ -121,18 +160,35 @@ public class Game1 : Microsoft.Xna.Framework.Game
         return 0;
     }
     
-    private static float HorrizontalGetDirection(KeyboardState keyboard, Keys left, Keys right)
+    // ball rests method 
+    // direction = 1 (move to the right)
+    // direction = -1 (move to the left)
+    private void ResetBall(int direction)
     {
-        if (keyboard.IsKeyDown(left))
-        {
-            return -1;
-        }
+        Rectangle screen = GraphicsDevice.Viewport.Bounds;
+        _ballPosition = new Vector2(screen.Width - _ballTexture.Width, screen.Height - _ballTexture.Height) / 2f;
 
-        else if (keyboard.IsKeyDown(right))
-        {
-            return 1;
-        }
-
-        return 0;
+        // Start with a random vertical speed, so that each serve is different.
+        float verticalSpeed = (Random.Shared.NextSingle() - 0.5f) * BallSpeed;
+        _ballVelocity = new Vector2(direction * BallSpeed, verticalSpeed);
     }
+    
+    // Returns the rectangle that a texture covers at a position.
+    private static Rectangle GetBounds(Vector2 position, Texture2D texture)
+    {
+        return new Rectangle((int)position.X, (int)position.Y, texture.Width, texture.Height);
+    }
+    
+    private void HitBall(Vector2 bat)
+    {
+        // Send the ball back 5% faster.
+        _ballVelocity.X = -_ballVelocity.X * 1.05f;
+
+        // Change the angle. A hit near the end of the bat gives a steeper angle.
+        float ballCenter = _ballPosition.Y + _ballTexture.Height / 2f;
+        float batCenter = bat.Y + _batTexture.Height / 2f;
+        _ballVelocity.Y = (ballCenter - batCenter) * 6f;
+    }
+    
+    
 }
