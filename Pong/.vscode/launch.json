@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Pong (DesktopGL)",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Platforms/DesktopGL/Pong.DesktopGL.csproj",
+            "preLaunchTask": "Build: DesktopGL"
+        }
+    ]
+}

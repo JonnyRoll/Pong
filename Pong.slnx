@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Pong/Content/Content.csproj" />
+  <Project Path="Pong/Platforms/DesktopGL/Pong.DesktopGL.csproj" />
+</Solution>
