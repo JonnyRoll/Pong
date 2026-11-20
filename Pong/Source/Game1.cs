@@ -63,11 +63,15 @@ public class Game1 : Microsoft.Xna.Framework.Game
         float timePassed = (float)gameTime.ElapsedGameTime.TotalSeconds; // totoal time passed 
         Rectangle screen = GraphicsDevice.Viewport.Bounds; // the game window 
 
-        _leftBat.Y +=  GetDirection(key, Keys.W, Keys.S) * timePassed *  movmentSpeed; // so that we account for slow or fast machines 
-        _rightBat.Y +=  GetDirection(key, Keys.Up, Keys.Down) * timePassed *  movmentSpeed; // so that we account for slow or fast machines 
+        _leftBat.Y +=  VerticalGetDirection(key, Keys.W, Keys.S) * timePassed *  movmentSpeed; // so that we account for slow or fast machines 
+        _leftBat.X += HorrizontalGetDirection(key, Keys.A, Keys.D) * timePassed *  movmentSpeed;
+        _rightBat.Y +=  VerticalGetDirection(key, Keys.Up, Keys.Down) * timePassed *  movmentSpeed; // so that we account for slow or fast machines 
+        _rightBat.X += HorrizontalGetDirection(key, Keys.Left, Keys.Right) * timePassed *  movmentSpeed;
         // now to make sure we don't leave the screen!
         _leftBat.Y = MathHelper.Clamp(_leftBat.Y, 0, screen.Height - _batTexture.Height);
         _rightBat.Y = MathHelper.Clamp(_rightBat.Y, 0, screen.Height - _batTexture.Height);
+        _leftBat.X = MathHelper.Clamp(_leftBat.X, 0, screen.Width/2f - _batTexture.Width);
+        _rightBat.X = MathHelper.Clamp(_rightBat.X, screen.Width/2f, screen.Width - _batTexture.Width);
         
         base.Update(gameTime);
     }
@@ -102,14 +106,29 @@ public class Game1 : Microsoft.Xna.Framework.Game
     /// <param name="up"></param>
     /// <param name="down"></param>
     /// <returns></returns>
-    private static float GetDirection(KeyboardState keyboard, Keys up, Keys down)
+    private static float VerticalGetDirection(KeyboardState keyboard, Keys up, Keys down)
     {
         if (keyboard.IsKeyDown(up))
         {
             return -1;
         }
 
-        if (keyboard.IsKeyDown(down))
+        else if (keyboard.IsKeyDown(down))
+        {
+            return 1;
+        }
+
+        return 0;
+    }
+    
+    private static float HorrizontalGetDirection(KeyboardState keyboard, Keys left, Keys right)
+    {
+        if (keyboard.IsKeyDown(left))
+        {
+            return -1;
+        }
+
+        else if (keyboard.IsKeyDown(right))
         {
             return 1;
         }
